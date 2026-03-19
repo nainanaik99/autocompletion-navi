@@ -250,6 +250,6 @@ gsutil ls -l -p <project> -r gs://<bucket>/<prefix> | awk 'NR>1 {print $1, $2, $
 % gcp,gcs,latest-object
 # List latest object in a bucket prefix
 $ project: gcloud projects list --format="value(projectId)"
-$ bucket: printf "spoke-cloudconnect-common-artifacts\nmy-bucket\n"
+$ bucket: printf "common-artifacts\nmy-bucket\n"
 $ prefix: printf "releases/project\nreleases/env\n"
 gsutil ls -l -p <project> -r gs://<bucket>/<prefix> | sort -k2,2 -r | head -n 1
