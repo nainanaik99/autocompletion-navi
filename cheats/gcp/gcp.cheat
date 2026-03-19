@@ -1,0 +1,255 @@
+% gcp,projects,current
+# Check current active gcloud project
+# Notes: Reads local gcloud CLI config
+gcloud config get-value project
+
+% gcp,projects,list
+# List all GCP projects
+$ project: gcloud projects list --format="value(projectId)"
+gcloud projects list
+
+% gcp,projects,set
+# Set active gcloud project
+# Flags: updates your local gcloud context
+$ project: gcloud projects list --format="value(projectId)"
+gcloud config set project <project>
+
+% gcp,projects,describe
+# Describe a GCP project
+$ project: gcloud projects list --format="value(projectId)"
+gcloud projects describe <project>
+
+% gcp,config,region
+# View default configured region
+gcloud config get-value compute/region
+
+% gcp,config,zone
+# View default configured zone
+gcloud config get-value compute/zone
+
+% gcp,iam,policy
+# Get IAM policy for a project
+$ project: gcloud projects list --format="value(projectId)"
+gcloud projects get-iam-policy <project>
+
+% gcp,iam,roles,list
+# List IAM roles filtered by keyword
+# Notes: useful values include network, serviceAccount, storage, compute
+$ keyword: printf "network\nserviceAccount\nstorage\ncompute\nredis\nfirewall\n"
+gcloud iam roles list --filter="<keyword>"
+
+% gcp,iam,service-accounts,list
+# List service accounts in current project
+gcloud iam service-accounts list
+
+% gcp,iam,service-accounts,create
+# Create a service account
+$ service_account_name: printf "cloudsqlproxy\nmy-service-account\n"
+gcloud iam service-accounts create <service_account_name>
+
+% gcp,iam,service-accounts,grant-role
+# Grant a role to a service account at project level
+# Notes: member format is serviceAccount:EMAIL
+$ project: gcloud projects list --format="value(projectId)"
+$ service_account_email: gcloud iam service-accounts list --format="value(email)"
+$ role: printf "roles/viewer\nroles/editor\nroles/owner\nroles/cloudsql.client\nroles/compute.viewer\n"
+gcloud projects add-iam-policy-binding <project> --member="serviceAccount:<service_account_email>" --role="<role>"
+
+% gcp,iam,service-accounts,key-create
+# Create a key for a service account
+# Notes: avoid long-lived keys where possible
+$ service_account_email: gcloud iam service-accounts list --format="value(email)"
+$ key_file: printf "./sa-key.json\n./sqlproxy.json\n"
+gcloud iam service-accounts keys create <key_file> --iam-account="<service_account_email>"
+
+% gcp,iam,service-accounts,roles
+# List project roles granted to a particular service account
+$ project: gcloud projects list --format="value(projectId)"
+$ service_account_email: gcloud iam service-accounts list --format="value(email)"
+gcloud projects get-iam-policy <project> --flatten="bindings[].members" --format="table(bindings.role)" --filter="bindings.members:<service_account_email>"
+
+% gcp,iam,service-accounts,all-from-policy
+# List all service accounts and service agents from project IAM policy
+$ project: gcloud projects list --format="value(projectId)"
+gcloud projects get-iam-policy <project> --flatten="bindings[].members[]" --filter='bindings.members~"serviceAccount:"' --format="value(bindings.members.split(sep=':').slice(1))"
+
+% gcp,iam,role,members
+# List IAM members for a specific role
+$ project: gcloud projects list --format="value(projectId)"
+$ role: printf "roles/viewer\nroles/editor\nroles/owner\nfirebase.sdkAdminServiceAgent\n"
+gcloud projects get-iam-policy <project> --flatten="bindings[].members" --format="table(bindings.members, bindings.role)" --filter="bindings.role:<role>"
+
+% gcp,iam,users,csv
+# Export all user-role bindings in CSV
+$ project: gcloud projects list --format="value(projectId)"
+gcloud projects get-iam-policy <project> --flatten="bindings[].members" --filter="bindings.members:user:" --format="csv(bindings.role, bindings.members)"
+
+% gcp,kubernetes,pods,watch
+# Watch Kubernetes pods
+# Notes: requires kubectl context to already be set
+kubectl get pods --watch
+
+% gcp,memorystore,redis,list
+# List Memorystore Redis instances in a region
+$ region: printf "europe-west2\neurope-west2-c\nus-central1\neurope-west1\n"
+gcloud redis instances list --region=<region>
+
+% gcp,firewall,list
+# List firewall rules as JSON
+gcloud compute firewall-rules list --format=json
+
+% gcp,firewall,list-by-tag
+# List firewall rules filtered by target tag
+# Flags: requires jq
+$ tag: printf "jumpbox\njenkins\nbastion\n"
+gcloud compute firewall-rules list --format=json | jq '.[] | select(.targetTags[]? | test("<tag>"))'
+
+% gcp,firewall,create
+# Create a firewall rule
+# Flags: common directions are INGRESS or EGRESS
+$ project: gcloud projects list --format="value(projectId)"
+$ rule_name: printf "test-sandbox-jenkins\nallow-ssh-egress\n"
+$ direction: printf "INGRESS\nEGRESS\n"
+$ priority: printf "1000\n65534\n"
+$ network: printf "default\nhost-network\n"
+$ action: printf "ALLOW\nDENY\n"
+$ rules: printf "tcp:22\ntcp:80,tcp:443\nall\n"
+$ cidr: printf "0.0.0.0/0\n10.0.0.0/8\n"
+$ tag: printf "sandbox-dev\njumpbox\njenkins\n"
+gcloud compute firewall-rules create <rule_name> --project=<project> --direction=<direction> --priority=<priority> --network=<network> --action=<action> --rules=<rules> --destination-ranges=<cidr> --target-tags=<tag>
+
+% gcp,routers,list
+# List Cloud Routers in current project
+gcloud compute routers list
+
+% gcp,routers,nats,list
+# List NATs for a router
+$ router: printf "service-router\n"
+$ region: printf "europe-west2\nus-central1\n"
+gcloud compute routers nats list --router=<router> --router-region=<region>
+
+% gcp,routers,nats,describe
+# Describe a Cloud NAT
+$ nat_name: printf "service-nat\n"
+$ router: printf "service-router\n"
+$ region: printf "europe-west2\nus-central1\n"
+gcloud compute routers nats describe <nat_name> --router=<router> --router-region=<region>
+
+% gcp,subnets,list
+# List VPC subnets in current project
+gcloud compute networks subnets list
+
+% gcp,subnets,list-in-project
+# Set project then list VPC subnets
+$ project: gcloud projects list --format="value(projectId)"
+gcloud config set project <project> && gcloud compute networks subnets list
+
+% gcp,shared-vpc,associated-resources
+# List Shared VPC associated resources and filter them
+$ host_project: gcloud projects list --format="value(projectId)"
+$ pattern: printf "spoke-spin-dev\nspoke-prism-dev\n"
+gcloud compute shared-vpc list-associated-resources <host_project> | grep <pattern>
+
+% gcp,shared-vpc,subnets,grep
+# List host project subnets and filter them
+$ host_project: gcloud projects list --format="value(projectId)"
+$ pattern: printf "spoke-prism-dev\nspoke-spin-dev\n"
+gcloud compute networks subnets list --project <host_project> | grep <pattern>
+
+% gcp,load-balancer,external
+# List external load balancers
+gcloud compute forwarding-rules list --filter="loadBalancingScheme=EXTERNAL"
+
+% gcp,load-balancer,describe
+# Describe a forwarding rule or load balancer
+# Flags: add --global for global forwarding rules
+$ forwarding_rule: gcloud compute forwarding-rules list --format="value(name)"
+gcloud compute forwarding-rules describe <forwarding_rule> --global
+
+% gcp,forwarding-rules,list
+# List all forwarding rules in table form
+gcloud compute forwarding-rules list
+
+% gcp,forwarding-rules,list-project
+# List forwarding rules in a specific project
+$ project: gcloud projects list --format="value(projectId)"
+gcloud compute forwarding-rules list --project <project>
+
+% gcp,backend-services,list-external
+# List backend services for external load balancers
+gcloud compute backend-services list --filter="loadBalancingScheme=EXTERNAL"
+
+% gcp,neg,list
+# List network endpoint groups
+gcloud compute network-endpoint-groups list
+
+% gcp,neg,describe
+# Describe a network endpoint group
+$ neg_name: gcloud compute network-endpoint-groups list --format="value(name)"
+$ zone: printf "europe-west2-c\neurope-west2-b\nus-central1-a\n"
+gcloud compute network-endpoint-groups describe <neg_name> --zone=<zone>
+
+% gcp,addresses,list
+# List external IP addresses
+gcloud compute addresses list
+
+% gcp,compute,instances,list
+# List compute instances
+gcloud compute instances list
+
+% gcp,compute,instances,list-by-tag
+# List compute instances filtered by tag
+$ tag: printf "jenkins\njumpbox\nbastion\n"
+gcloud compute instances list --filter="tags.items=<tag>"
+
+% gcp,compute,instances,vpc
+# Get VPC network of a compute instance
+$ instance: gcloud compute instances list --format="value(name)"
+gcloud compute instances describe <instance> --format="value(networkInterfaces.network)"
+
+% gcp,compute,instances,vpc-json
+# Get VPC network of a compute instance using jq
+# Flags: requires jq
+$ instance: gcloud compute instances list --format="value(name)"
+gcloud compute instances describe <instance> --format=json | jq '.networkInterfaces[].network'
+
+% gcp,compute,instances,subnet
+# Get subnet of a compute instance
+$ instance: gcloud compute instances list --format="value(name)"
+gcloud compute instances describe <instance> --format="value(networkInterfaces.subnetwork)"
+
+% gcp,services,enabled
+# List enabled APIs and services in a project
+$ project: gcloud projects list --format="value(projectId)"
+gcloud services list --enabled --project <project>
+
+% gcp,billing,accounts,list
+# List billing accounts
+gcloud beta billing accounts list
+
+% gcp,billing,accounts,policy
+# Get IAM policy for a billing account
+$ billing_account: gcloud beta billing accounts list --format="value(name)"
+gcloud beta billing accounts get-iam-policy <billing_account>
+
+% gcp,billing,accounts,describe
+# Describe a billing account
+$ billing_account: gcloud beta billing accounts list --format="value(name)"
+gcloud beta billing accounts describe <billing_account>
+
+% gcp,gcs,ls-date-range
+# List bucket objects for a specific date range
+# Notes: dates must be YYYY-MM-DD
+$ project: gcloud projects list --format="value(projectId)"
+$ bucket: printf "common-artifacts\nmy-bucket\n"
+$ prefix: printf "releases/env\nreleases/project\n"
+$ start_date: printf "2023-06-07\n2026-03-01\n"
+$ end_date: printf "2023-06-08\n2026-03-19\n"
+gsutil ls -l -p <project> -r gs://<bucket>/<prefix> | awk 'NR>1 {print $1, $2, $3}' | awk '$2 >= "<start_date>" && $2 <= "<end_date>"'
+
+% gcp,gcs,latest-object
+# List latest object in a bucket prefix
+$ project: gcloud projects list --format="value(projectId)"
+$ bucket: printf "spoke-cloudconnect-common-artifacts\nmy-bucket\n"
+$ prefix: printf "releases/project\nreleases/env\n"
+gsutil ls -l -p <project> -r gs://<bucket>/<prefix> | sort -k2,2 -r | head -n 1
