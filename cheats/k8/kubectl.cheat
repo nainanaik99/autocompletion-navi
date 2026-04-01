@@ -529,7 +529,7 @@ kubectl rollout undo deployment/abc
 kubectl rollout status daemonset/<name>
 
 # Restart a deployment
-kubectl rollout restart deployment/abc
+kubectl rollout restart deployment/<deployname> -n <namespace>
 
 # Restart deployments with the 'app=<name>' label
 kubectl rollout restart deployment --selector=app=<name>
@@ -871,3 +871,126 @@ kubectl create rolebinding admin-binding --role=admin --serviceaccount=monitorin
 
 # Create a new service account named my-service-account
 kubectl create serviceaccount my-service-account
+
+% k8s,argocd,applications,list
+# List Argo CD applications in the argocd namespace
+# Notes: useful first check for app sync and health state
+kubectl get applications -n argocd
+
+% k8s,argocd,cm,url
+# Get Argo CD URL from the argocd-cm configmap
+# Notes: prints only the configured URL
+kubectl get cm argocd-cm -n argocd -o jsonpath='{.data.url}'; echo
+
+% k8s,argocd,secret,oidc,yaml
+# Get Argo CD OIDC secret as YAML
+# Notes: inspect secret metadata and encoded values
+kubectl get secret argocd-oidc -n argocd -o yaml
+
+% k8s,argocd,externalsecret,oidc,clientid
+# Get decoded clientID from Argo CD OIDC ExternalSecret
+# Notes: requires base64 to be available locally
+kubectl get externalsecret argocd-oidc -n argocd -o jsonpath='{.data.clientID}' | base64 -d; echo
+
+% k8s,argocd,secret,describe
+# Describe a secret
+# Notes: use when you want events and object details instead of raw YAML
+$ secret: printf "argocd-oidc\nbowyer-gitops-repo\npulp-regcred\n"
+$ namespace: printf "argocd\ndefault\nvault\n"
+kubectl describe secret <secret> -n <namespace>
+
+% k8s,argocd,secrets,list
+# List all secrets in the argocd namespace
+kubectl get secrets -n argocd
+
+% k8s,argocd,application,refresh
+# Force hard refresh of an Argo CD application
+# Notes: helpful when repo, secret, or manifest changes are not picked up
+$ application: printf "gatus\n"
+$ namespace: printf "argocd\n"
+kubectl annotate application <application> -n <namespace> argocd.argoproj.io/refresh=hard --overwrite
+
+% k8s,externalsecrets,clustersecretstore,list
+# List ClusterSecretStore resources
+kubectl get clustersecretstore
+
+% k8s,externalsecrets,clustersecretstore,describe
+# Describe a ClusterSecretStore
+$ clustersecretstore: printf "vault-backend\n"
+kubectl describe clustersecretstore <clustersecretstore>
+
+% k8s,externalsecrets,get,yaml
+# Get an ExternalSecret as YAML
+$ externalsecret: printf "bowyer-gitops-repo\npulp-regcred\nargocd-oidc\n"
+$ namespace: printf "argocd\ndefault\n"
+kubectl get externalsecret <externalsecret> -n <namespace> -o yaml
+
+% k8s,externalsecrets,describe
+# Describe an ExternalSecret
+$ externalsecret: printf "pulp-regcred\nbowyer-gitops-repo\nargocd-oidc\n"
+$ namespace: printf "default\nargocd\n"
+kubectl describe externalsecret <externalsecret> -n <namespace>
+
+% k8s,secrets,list-all
+# List secrets across all namespaces
+# Notes: corrected from 'kubectl list secret -A' to 'kubectl get secrets -A'
+kubectl get secrets -A
+
+% k8s,externalsecrets,force-sync
+# Force sync an ExternalSecret by updating the force-sync annotation
+# Notes: uses the current epoch timestamp
+$ externalsecret: printf "bowyer-gitops-repo\npulp-regcred\nargocd-oidc\n"
+$ namespace: printf "argocd\ndefault\n"
+kubectl -n <namespace> annotate externalsecret <externalsecret> force-sync=$(date +%s) --overwrite
+
+% k8s,storageclass,list
+# List storage classes
+kubectl get storageclass
+
+% k8s,storageclass,describe
+# Describe a storage class
+$ storageclass: printf "local-path\nstandard\n"
+kubectl describe storageclass <storageclass>
+
+% k8s,storageclass,local-path,config
+# Get local-path provisioner configmap as YAML
+# Notes: useful to inspect nodePathMap and helper pod settings
+kubectl -n local-path-storage get configmap local-path-config -o yaml
+
+% k8s,secretstore,list
+# List SecretStore resources in the current namespace
+# Notes: SecretStore is namespaced, unlike ClusterSecretStore
+kubectl get secretstore
+
+% k8s,pvc,describe
+# Describe a PersistentVolumeClaim
+$ pvc: printf "data-vault-0\n"
+$ namespace: printf "vault\ndefault\n"
+kubectl describe pvc <pvc> -n <namespace>
+
+% k8s,pvc,list
+# List PersistentVolumeClaims in a namespace
+$ namespace: printf "vault\ndefault\nargocd\n"
+kubectl get pvc -n <namespace>
+
+% k8s,pvc,delete-all
+# Delete all PersistentVolumeClaims in a namespace
+# Notes: destructive operation; can trigger data loss depending on reclaim policy
+$ namespace: printf "vault\ndefault\n"
+kubectl delete pvc -n <namespace> --all
+
+% k8s,vault,workloads
+# List StatefulSets and Deployments in the vault namespace
+kubectl get statefulset,deployment -n vault
+
+% k8s,dns,test,busybox
+# Start a temporary BusyBox shell for DNS and network checks
+# Notes: pod is removed automatically on exit
+$ namespace: printf "monitoring\ndefault\nargocd\n"
+kubectl -n <namespace> run dns-test --rm -it --image=busybox:1.36 --restart=Never -- sh
+
+% k8s,network,test,curl
+# Start a temporary curl container shell for HTTP and network tests
+# Notes: pod is removed automatically on exit
+$ pod_name: printf "nettest\n"
+kubectl run -it --rm <pod_name> --image=curlimages/curl --restart=Never -- sh
